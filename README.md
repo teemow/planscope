@@ -27,9 +27,12 @@ other pLAN hardware are very welcome.
 an ESP32 (or similar) on the pLAN's RS-485 bus running a firmware that
 serves the capture-and-control socket, summarized in
 ["The device side"](#the-device-side-what-the-firmware-must-provide)
-below. planterm provides the protocol engine and the session code for such
-a firmware. **Without a bridge device**, planscope still works as a pure
-offline analyzer over hex capture files (everything under "Offline capture
+below. The supported firmware is planterm's
+[`plan_bridge` ESPHome component](https://github.com/teemow/planterm/tree/main/esphome/components/plan_bridge)
+(consumable as an ESPHome external component; planterm also provides the
+protocol engine and session code if you want to roll your own).
+**Without a bridge device**, planscope still works as a pure offline
+analyzer over hex capture files (everything under "Offline capture
 analysis").
 
 ## Views
