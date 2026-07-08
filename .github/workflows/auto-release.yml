@@ -1,0 +1,10 @@
+name: Auto-release
+on:
+  push:
+    branches: [main]
+jobs:
+  release:
+    uses: teemow/github-workflows/.github/workflows/auto-release.yml@main
+    permissions:
+      contents: write
+      pull-requests: read

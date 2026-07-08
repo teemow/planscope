@@ -507,8 +507,10 @@ func RunCapture(addr, key string, h CaptureHooks) (connected bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	defer c.Close()
-	c.SetDeadline(time.Now().Add(5 * time.Second))
+	defer func() { _ = c.Close() }()
+	if err := c.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		return false, err
+	}
 	banner := make([]byte, len(captureBanner))
 	if _, err := io.ReadFull(c, banner); err != nil {
 		return false, fmt.Errorf("capture banner: %w", err)
@@ -530,7 +532,9 @@ func RunCapture(addr, key string, h CaptureHooks) (connected bool, err error) {
 		}
 		cc = &CapConn{c: c}
 	}
-	c.SetDeadline(time.Time{})
+	if err := c.SetDeadline(time.Time{}); err != nil {
+		return false, err
+	}
 	h.OnLine("[plan_cap]: connected (authenticated capture-and-control stream)")
 	if h.OnConn != nil {
 		h.OnConn(cc)
@@ -543,18 +547,24 @@ func RunCapture(addr, key string, h CaptureHooks) (connected bool, err error) {
 		// a quiet gap before the next frame is the tail-flush boundary. The
 		// first header byte is awaited alone so a frame split across TCP
 		// segments can never be mistaken for idleness.
-		c.SetReadDeadline(time.Now().Add(250 * time.Millisecond))
+		if err := c.SetReadDeadline(time.Now().Add(250 * time.Millisecond)); err != nil {
+			return true, err
+		}
 		if _, err := io.ReadFull(c, hdr[:1]); err != nil {
 			if !errors.Is(err, os.ErrDeadlineExceeded) {
 				return true, err
 			}
 			l.emit(true) // bus idle: the pending frame is complete
-			c.SetReadDeadline(time.Now().Add(90 * time.Second))
+			if err := c.SetReadDeadline(time.Now().Add(90 * time.Second)); err != nil {
+				return true, err
+			}
 			if _, err := io.ReadFull(c, hdr[:1]); err != nil {
 				return true, err // >90 s without even a state event = dead link
 			}
 		}
-		c.SetReadDeadline(time.Now().Add(5 * time.Second))
+		if err := c.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			return true, err
+		}
 		if hdr[0] > 0x01 {
 			return true, fmt.Errorf("bad frame marker 0x%02X", hdr[0])
 		}

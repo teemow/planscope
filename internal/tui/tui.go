@@ -260,7 +260,8 @@ func (a *app) toggleArmed() {
 		// accordingly.
 		h0 := a.sess.ScrapeHolds()
 		if target {
-			cap.Command(esphome.CmdEnroll, 1)
+			// best effort: a failure here surfaces through the arm error below
+			_, _ = cap.Command(esphome.CmdEnroll, 1)
 		}
 		if _, err := cap.Command(esphome.CmdArm, boolArg(target)); err != nil {
 			msg = fmt.Sprintf("arm command failed: %v", err)
@@ -418,7 +419,7 @@ func Run(addr, key string, bucket int) {
 		once.Do(func() {
 			if a.tty {
 				if oldState != nil {
-					term.Restore(int(os.Stdin.Fd()), oldState)
+					_ = term.Restore(int(os.Stdin.Fd()), oldState) // teardown
 				}
 				fmt.Print("\x1b[?1049l\x1b[?25h")
 			}
@@ -550,10 +551,14 @@ func (a *app) keyboardLoop(restore func()) {
 				a.mu.Unlock()
 				if cap != nil {
 					if armed {
-						cap.Command(esphome.CmdArm, 0)
+						if _, err := cap.Command(esphome.CmdArm, 0); err != nil {
+							fmt.Fprintln(os.Stderr, "planscope: disarm on exit:", err)
+						}
 					}
 					if enrolled && !a.sess.HasObserve() {
-						cap.Command(esphome.CmdEnroll, 0)
+						if _, err := cap.Command(esphome.CmdEnroll, 0); err != nil {
+							fmt.Fprintln(os.Stderr, "planscope: disenroll on exit:", err)
+						}
 					}
 				}
 				restore()

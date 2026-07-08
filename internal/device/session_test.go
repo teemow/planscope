@@ -200,8 +200,8 @@ func readCommand(t *testing.T, server net.Conn) (id, op, arg byte) {
 // another key's late retry must not satisfy it.
 func TestSessionPressWaitsForTX(t *testing.T) {
 	client, server := net.Pipe()
-	defer client.Close()
-	defer server.Close()
+	defer func() { _ = client.Close() }()
+	defer func() { _ = server.Close() }()
 	s := NewSession("", "")
 	s.cap = esphome.NewTestCapConn(client)
 	s.wantArmed = true
@@ -228,8 +228,8 @@ func TestSessionPressWaitsForTX(t *testing.T) {
 // the device's verdict instead of idling out the 5 s TX-confirm timeout.
 func TestSessionPressFailsFastOnNack(t *testing.T) {
 	client, server := net.Pipe()
-	defer client.Close()
-	defer server.Close()
+	defer func() { _ = client.Close() }()
+	defer func() { _ = server.Close() }()
 	s := NewSession("", "")
 	s.cap = esphome.NewTestCapConn(client)
 	s.wantArmed = true
@@ -254,8 +254,8 @@ func TestSessionPressFailsFastOnNack(t *testing.T) {
 // data flows again.
 func TestSessionPressFailsFastOnCaptureLoss(t *testing.T) {
 	client, server := net.Pipe()
-	defer client.Close()
-	defer server.Close()
+	defer func() { _ = client.Close() }()
+	defer func() { _ = server.Close() }()
 	s := NewSession("", "")
 	s.cap = esphome.NewTestCapConn(client)
 	s.wantArmed = true
@@ -291,8 +291,8 @@ func TestSessionPressFailsFastOnCaptureLoss(t *testing.T) {
 // (join event) and the menu walker yields (hold event).
 func TestSessionArmCommandSequence(t *testing.T) {
 	client, server := net.Pipe()
-	defer client.Close()
-	defer server.Close()
+	defer func() { _ = client.Close() }()
+	defer func() { _ = server.Close() }()
 	s := NewSession("", "")
 	s.cap = esphome.NewTestCapConn(client)
 	// connect-time truth (the stream replays it right at attach)

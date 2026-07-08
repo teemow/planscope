@@ -12,6 +12,7 @@ package device
 import (
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -180,16 +181,18 @@ func (s *Session) Close() {
 	close(s.done)
 	if cap != nil {
 		if armed {
-			cap.Command(esphome.CmdArm, 0)
+			if _, err := cap.Command(esphome.CmdArm, 0); err != nil {
+				fmt.Fprintln(os.Stderr, "planscope: disarm on close:", err)
+			}
 		}
-		cap.Close() // unblocks the read loop
+		_ = cap.Close() // unblocks the read loop
 	}
 }
 
 // Disenroll drops the pLAN membership explicitly (the pGD gets its poll
 // slot back).
-func (s *Session) Disenroll() {
-	s.command(esphome.CmdEnroll, 0)
+func (s *Session) Disenroll() error {
+	return s.command(esphome.CmdEnroll, 0)
 }
 
 // FeedLine ingests one capture line (screen bytes off the capture
@@ -270,8 +273,14 @@ func (s *Session) FeedEvent(e esphome.Event) {
 		tx()
 	}
 	if fix != nil {
-		fix.Command(esphome.CmdEnroll, 1)
-		fix.Command(esphome.CmdArm, 1)
+		// best-effort heal; the state event repeats every 10 s, so a failed
+		// attempt retries on the next one
+		if _, err := fix.Command(esphome.CmdEnroll, 1); err != nil {
+			fmt.Fprintln(os.Stderr, "planscope: enroll watchdog:", err)
+		}
+		if _, err := fix.Command(esphome.CmdArm, 1); err != nil {
+			fmt.Fprintln(os.Stderr, "planscope: re-arm watchdog:", err)
+		}
 	}
 }
 
@@ -744,7 +753,9 @@ func (s *Session) autoRecover() {
 			case <-time.After(time.Second):
 			}
 			if s.needRecover() && s.WaitSettle(SettleQuiet) {
-				s.Refresh()
+				if err := s.Refresh(); err != nil {
+					fmt.Fprintln(os.Stderr, "planscope: auto-recover refresh:", err)
+				}
 			}
 		}
 	}()

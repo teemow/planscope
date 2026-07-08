@@ -35,18 +35,20 @@ func TestLiveCapture(t *testing.T) {
 		t.Fatal("no device in config")
 	}
 	states := make(chan esphome.Event, 1)
-	go esphome.RunCapture(esphome.CaptureAddr(cfg["device"]+":6053"), cfg["key"],
-		esphome.CaptureHooks{
-			OnLine: func(string) {},
-			OnEvent: func(e esphome.Event) {
-				if e.Kind == esphome.EvState {
-					select {
-					case states <- e:
-					default:
+	go func() {
+		_, _ = esphome.RunCapture(esphome.CaptureAddr(cfg["device"]+":6053"), cfg["key"],
+			esphome.CaptureHooks{
+				OnLine: func(string) {},
+				OnEvent: func(e esphome.Event) {
+					if e.Kind == esphome.EvState {
+						select {
+						case states <- e:
+						default:
+						}
 					}
-				}
-			},
-		})
+				},
+			})
+	}()
 	select {
 	case <-states:
 	case <-time.After(10 * time.Second):

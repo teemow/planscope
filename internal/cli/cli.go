@@ -81,7 +81,7 @@ Device address and API key resolve flag > environment (PLANSCOPE_KEY) >
 config file.
 `, help(), fs.FlagUsages())
 	}
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 
 	if *version {
 		fmt.Println(versionString())

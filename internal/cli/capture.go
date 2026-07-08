@@ -58,7 +58,7 @@ func runReport(args []string) int {
 	bucket := fs.Int("bucket", 15, "timeline bucket size in seconds")
 	from := fs.String("from", "", "analyze only after this time (HH:MM:SS)")
 	to := fs.String("to", "", "analyze only before this time (HH:MM:SS)")
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 	text := inputText(fs.Args())
 	an := plan.NewAnalyzer(*bucket)
 	an.From, an.To = *from, *to
@@ -80,7 +80,7 @@ func runReport(args []string) int {
 
 func runAnalyze(args []string) int {
 	fs := flag.NewFlagSet("analyze", flag.ExitOnError)
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 	decode.ReportAnalyze(decode.ParseFramesText(inputText(fs.Args())))
 	return 0
 }
@@ -91,7 +91,7 @@ func runRegroup(args []string) int {
 		"candidate atomic frame lengths (comma-separated)")
 	sumTargets := fs.String("sum-targets", "0xFE,0xFF",
 		"good whole-frame byte-sum values mod 256 (comma-separated)")
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 	text := inputText(fs.Args())
 	var ls []int
 	for _, s := range strings.Split(*lengths, ",") {
@@ -121,7 +121,7 @@ func runRegroup(args []string) int {
 
 func runCorrelate(args []string) int {
 	fs := flag.NewFlagSet("correlate", flag.ExitOnError)
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 	if fs.NArg() != 2 {
 		fmt.Fprintln(os.Stderr, "usage: planscope correlate BASE VARIANT")
 		return 2
@@ -135,7 +135,7 @@ func runCorrelate(args []string) int {
 
 func runRecords(args []string) int {
 	fs := flag.NewFlagSet("records", flag.ExitOnError)
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 	decode.ReportRecords(decode.ParseTimedText(inputText(fs.Args())))
 	return 0
 }
@@ -143,7 +143,7 @@ func runRecords(args []string) int {
 func runScreenCmd(args []string) int {
 	fs := flag.NewFlagSet("screen", flag.ExitOnError)
 	changes := fs.Int("changes", 40, "max distinct values to list per row")
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 	decode.ReportScreen(decode.ParseTimedText(inputText(fs.Args())), *changes)
 	return 0
 }
@@ -155,7 +155,7 @@ func runBursts(args []string) int {
 	recordMin := fs.Int("record-min", 3, "min 20 0C records in a window to count as a redraw")
 	quiet := fs.String("quiet-selectors", "00,02,03,04",
 		"baseline selectors seen at steady state (comma-separated hex)")
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 	text := inputText(fs.Args())
 	qs := map[int]bool{}
 	for _, s := range strings.Split(*quiet, ",") {
