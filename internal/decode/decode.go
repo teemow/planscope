@@ -56,7 +56,7 @@ func ParseFramesText(text string) [][]byte {
 		for _, t := range strings.Fields(brackRe.ReplaceAllString(line, " ")) {
 			if m := hexRe.FindStringSubmatch(t); m != nil {
 				var b byte
-				fmt.Sscanf(m[1], "%02X", &b)
+				_, _ = fmt.Sscanf(m[1], "%02X", &b) // hexRe guarantees the format
 				data = append(data, b)
 			}
 		}
@@ -84,14 +84,14 @@ func ParseTimedText(text string) []timedLine {
 		ts := -1
 		if m := tsRe.FindStringSubmatch(line); m != nil {
 			var h, mi, s, ms int
-			fmt.Sscanf(m[1]+" "+m[2]+" "+m[3]+" "+m[4], "%d %d %d %d", &h, &mi, &s, &ms)
+			_, _ = fmt.Sscanf(m[1]+" "+m[2]+" "+m[3]+" "+m[4], "%d %d %d %d", &h, &mi, &s, &ms) // tsRe guarantees the format
 			ts = ((h*60+mi)*60+s)*1000 + ms
 		}
 		var data []byte
 		for _, t := range strings.Fields(brackRe.ReplaceAllString(line, " ")) {
 			if m := hexRe.FindStringSubmatch(t); m != nil {
 				var b byte
-				fmt.Sscanf(m[1], "%02X", &b)
+				_, _ = fmt.Sscanf(m[1], "%02X", &b) // hexRe guarantees the format
 				data = append(data, b)
 			}
 		}

@@ -21,7 +21,7 @@ import (
 func runLog(args []string) int {
 	fs := flag.NewFlagSet("log", flag.ExitOnError)
 	dev := addDeviceFlags(fs)
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 	addr, key := mustTarget(dev)
 	// Capture records carry the device clock; stamp host wall time so
 	// offline --from/--to analysis of the tee works. Everything comes off
@@ -44,7 +44,7 @@ func runLog(args []string) int {
 func runCall(args []string) int {
 	fs := flag.NewFlagSet("call", flag.ExitOnError)
 	dev := addDeviceFlags(fs)
-	fs.Parse(args)
+	_ = fs.Parse(args) // ExitOnError: exits on bad flags
 	if fs.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "usage: planscope call <service> [value]\n"+
 			"e.g.   planscope call set_enroll true\n"+

@@ -133,7 +133,7 @@ func serveCap(t *testing.T, c net.Conn, key string) *capServer {
 	if _, _, _, err := hs.ReadMessage(nil, body[1:]); err != nil {
 		// PSK mismatch: the spec's exact error text, then close
 		s.writeFrame(0x01, append([]byte{0x01}, "Handshake MAC failure"...))
-		c.Close()
+		_ = c.Close()
 		return s
 	}
 	msg2, cs0, cs1, err := hs.WriteMessage(nil, nil)
@@ -225,7 +225,7 @@ func TestCaptureStreamPlaintext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	e2 := espToks(2, "    Hotwater:   39.0")
 	e7 := espToks(7, "             Auto-On")
@@ -236,7 +236,7 @@ func TestCaptureStreamPlaintext(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer c.Close()
+		defer func() { _ = c.Close() }()
 		s := serveCap(t, c, "")
 		// state event right at session start (the bridge's connect-time
 		// truth): armed=yes enroll=drain tx_mode=2
@@ -266,7 +266,7 @@ func TestCaptureStreamPlaintext(t *testing.T) {
 	var events []Event
 	done := make(chan struct{})
 	go func() {
-		RunCapture(ln.Addr().String(), "", CaptureHooks{
+		_, _ = RunCapture(ln.Addr().String(), "", CaptureHooks{
 			OnLine: func(line string) {
 				mu.WriteString(line + "\n")
 				scr.FeedLine(line)
@@ -356,7 +356,7 @@ func TestCaptureNoiseRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	frame := espToks(2, "    Hotwater:   39.0")
 	go func() {
@@ -364,7 +364,7 @@ func TestCaptureNoiseRoundtrip(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer c.Close()
+		defer func() { _ = c.Close() }()
 		s := serveCap(t, c, key)
 		s.send(evRecord(100, byte(EvState), 1|(EnrollYes<<1), 2))
 		s.send(capRecord(1, 200, 0, append(frame, pollToks()...)))
@@ -385,7 +385,7 @@ func TestCaptureNoiseRoundtrip(t *testing.T) {
 	var conn *CapConn
 	done := make(chan struct{})
 	go func() {
-		RunCapture(ln.Addr().String(), key, CaptureHooks{
+		_, _ = RunCapture(ln.Addr().String(), key, CaptureHooks{
 			OnLine: func(line string) {
 				mu.WriteString(line + "\n")
 				scr.FeedLine(line)
@@ -437,13 +437,13 @@ func TestCaptureWrongKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	go func() {
 		c, err := ln.Accept()
 		if err != nil {
 			return
 		}
-		defer c.Close()
+		defer func() { _ = c.Close() }()
 		serveCap(t, c, throwawayKey(t)) // sends "Handshake MAC failure" and closes
 	}()
 	connected, err := RunCapture(ln.Addr().String(), throwawayKey(t),

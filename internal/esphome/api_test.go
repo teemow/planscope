@@ -9,8 +9,8 @@ import (
 // one ExecuteServiceArgument with the keycode zigzag-encoded in field 5.
 func TestExecServiceWire(t *testing.T) {
 	client, server := net.Pipe()
-	defer client.Close()
-	defer server.Close()
+	defer func() { _ = client.Close() }()
+	defer func() { _ = server.Close() }()
 	a := NewTestConn(client, map[string]uint32{"inject_key": 0xCAFE0001})
 
 	go func() {

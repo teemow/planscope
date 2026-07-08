@@ -376,9 +376,12 @@ func Connect(addr, key string) (*Conn, error) {
 	}
 	var a *Conn
 	if key != "" {
-		c.SetDeadline(time.Now().Add(5 * time.Second))
+		if err := c.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			_ = c.Close()
+			return nil, err
+		}
 		if a, err = noiseHandshake(c, key); err != nil {
-			c.Close()
+			_ = c.Close()
 			return nil, err
 		}
 	} else {
@@ -389,11 +392,11 @@ func Connect(addr, key string) (*Conn, error) {
 	hello = PFieldVarint(hello, 2, 1) // api_version_major
 	hello = PFieldVarint(hello, 3, 9) // api_version_minor
 	if err := a.writeMsg(msgHelloRequest, hello); err != nil {
-		c.Close()
+		_ = c.Close()
 		return nil, err
 	}
 	if err := a.writeMsg(msgConnectRequest, nil); err != nil {
-		c.Close()
+		_ = c.Close()
 		return nil, err
 	}
 	return a, nil
@@ -407,7 +410,7 @@ func (a *Conn) handleSession(typ int, payload []byte) (done bool, err error) {
 	case msgPingRequest:
 		return false, a.writeMsg(msgPingResponse, nil)
 	case msgDisconnectRequest:
-		a.writeMsg(msgDisconnectResponse, nil)
+		_ = a.writeMsg(msgDisconnectResponse, nil) // best-effort courtesy reply
 		return false, fmt.Errorf("device requested disconnect")
 	case msgListEntitiesServicesResponse:
 		name := string(PBBytesField(payload, 1))
@@ -434,12 +437,14 @@ func CallService(addr, key, name string, arg []byte) error {
 	if err != nil {
 		return err
 	}
-	defer a.C.Close()
+	defer func() { _ = a.C.Close() }()
 	if err := a.writeMsg(msgListEntitiesRequest, nil); err != nil {
 		return err
 	}
 	for {
-		a.C.SetReadDeadline(time.Now().Add(10 * time.Second))
+		if err := a.C.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
+			return fmt.Errorf("service discovery: %w", err)
+		}
 		typ, payload, err := a.readMsg()
 		if err != nil {
 			return fmt.Errorf("service discovery: %w", err)
@@ -461,7 +466,9 @@ func CallService(addr, key, name string, arg []byte) error {
 		return err
 	}
 	for {
-		a.C.SetReadDeadline(time.Now().Add(10 * time.Second))
+		if err := a.C.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
+			return fmt.Errorf("confirm: %w", err)
+		}
 		typ, payload, err := a.readMsg()
 		if err != nil {
 			return fmt.Errorf("confirm: %w", err)
@@ -473,6 +480,6 @@ func CallService(addr, key, name string, arg []byte) error {
 			return err
 		}
 	}
-	a.writeMsg(msgDisconnectRequest, nil)
+	_ = a.writeMsg(msgDisconnectRequest, nil) // best-effort goodbye
 	return nil
 }
