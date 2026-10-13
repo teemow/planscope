@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -262,12 +263,17 @@ func TestCaptureStreamPlaintext(t *testing.T) {
 
 	scr := plan.NewScreen()
 	an := plan.NewAnalyzer(15)
+	// The capture goroutine keeps running (idle tail flush) after done
+	// fires, so every hook and every assertion goes through mtx.
+	var mtx sync.Mutex
 	var mu strings.Builder
 	var events []Event
 	done := make(chan struct{})
 	go func() {
 		_, _ = RunCapture(ln.Addr().String(), "", CaptureHooks{
 			OnLine: func(line string) {
+				mtx.Lock()
+				defer mtx.Unlock()
 				mu.WriteString(line + "\n")
 				scr.FeedLine(line)
 				if tsMs, declared, seq, burst, ok := plan.ParseLine(line); ok && !plan.IsSnapshotLine(line) {
@@ -281,12 +287,22 @@ func TestCaptureStreamPlaintext(t *testing.T) {
 					}
 				}
 			},
-			OnEvent: func(e Event) { events = append(events, e) },
+			OnEvent: func(e Event) {
+				mtx.Lock()
+				defer mtx.Unlock()
+				events = append(events, e)
+			},
 		})
 	}()
+	timedOut := false
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
+		timedOut = true
+	}
+	mtx.Lock()
+	defer mtx.Unlock()
+	if timedOut {
 		t.Fatalf("screen never completed; lines:\n%s", mu.String())
 	}
 
@@ -379,6 +395,9 @@ func TestCaptureNoiseRoundtrip(t *testing.T) {
 	}()
 
 	scr := plan.NewScreen()
+	// The capture goroutine keeps running (idle tail flush) after the ack,
+	// so every hook and every assertion goes through mtx.
+	var mtx sync.Mutex
 	var mu strings.Builder
 	var events []Event
 	var acks []Ack
@@ -387,10 +406,14 @@ func TestCaptureNoiseRoundtrip(t *testing.T) {
 	go func() {
 		_, _ = RunCapture(ln.Addr().String(), key, CaptureHooks{
 			OnLine: func(line string) {
+				mtx.Lock()
+				defer mtx.Unlock()
 				mu.WriteString(line + "\n")
 				scr.FeedLine(line)
 			},
 			OnEvent: func(e Event) {
+				mtx.Lock()
+				defer mtx.Unlock()
 				events = append(events, e)
 				// the state event proves the session: fire the command
 				if e.Kind == EvState {
@@ -400,15 +423,23 @@ func TestCaptureNoiseRoundtrip(t *testing.T) {
 				}
 			},
 			OnAck: func(a Ack) {
+				mtx.Lock()
+				defer mtx.Unlock()
 				acks = append(acks, a)
 				close(done)
 			},
 			OnConn: func(c *CapConn) { conn = c },
 		})
 	}()
+	timedOut := false
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
+		timedOut = true
+	}
+	mtx.Lock()
+	defer mtx.Unlock()
+	if timedOut {
 		t.Fatalf("no ack within 5s; lines:\n%s", mu.String())
 	}
 
